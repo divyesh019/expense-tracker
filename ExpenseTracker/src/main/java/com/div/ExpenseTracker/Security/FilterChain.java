@@ -22,12 +22,18 @@ public class FilterChain {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         auth ->
-                                auth.requestMatchers("/status","/health","/auth/**","/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                                auth.requestMatchers(
+                                                "/",
+                                                "/status",
+                                                "/health",
+                                                "/auth/**",
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**")
+                                        .permitAll()
                                         .anyRequest().authenticated())
                 .sessionManagement(sessionConfig ->
                         sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
 
     return httpSecurity.build();
     }

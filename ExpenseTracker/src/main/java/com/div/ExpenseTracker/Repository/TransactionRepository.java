@@ -37,4 +37,7 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
             """)
     List<Object[]> sumByCategoryForProfileAndType(
             @Param("profileId") Long profileId, @Param("type") TransactionType type);
+
+
+    List<TransactionEntity> findAllByProfileEntity_Id(Long profileId);
 }
