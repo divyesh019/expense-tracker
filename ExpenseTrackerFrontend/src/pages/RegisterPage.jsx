@@ -68,7 +68,7 @@ function RegisterPage() {
         />
         {message && <p className="success">{message}</p>}
         {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? 'Creating account...' : 'Register'}
         </button>
         <p className="muted">

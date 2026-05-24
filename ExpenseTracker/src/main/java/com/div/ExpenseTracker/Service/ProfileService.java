@@ -8,6 +8,7 @@ import com.div.ExpenseTracker.Repository.ProfileRepository;
 import com.div.ExpenseTracker.Util.AuthUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,8 @@ public class ProfileService {
     private final AuthenticationManager authenticationManager;
     private final AuthUtils authUtils;
 
+    @Value("${app.public-url:http://localhost:8080}")
+    private String appPublicUrl;
 
     public ProfileResponseDto registerProfile(ProfileRequestDto profileRequestDto) {
         if(profileRepository.findByEmail(profileRequestDto.getEmail()).isPresent()){
@@ -69,7 +72,8 @@ public class ProfileService {
 
     private void sendActivationEmail(ProfileEntity profileEntity){
         String subject = "Activate your expense tracker account";
-        String activationLink = "http://localhost:8080/api/v1.0/auth/activate?token=" + profileEntity.getActivationToken();
+        String baseUrl = appPublicUrl.endsWith("/") ? appPublicUrl.substring(0, appPublicUrl.length() - 1) : appPublicUrl;
+        String activationLink = baseUrl + "/api/v1.0/auth/activate?token=" + profileEntity.getActivationToken();
         String body = "Hi " +profileEntity.getFullName() + " Click on the following link to activate your account: " + activationLink;
         emailService.sendEmail(
                 profileEntity.getEmail(),

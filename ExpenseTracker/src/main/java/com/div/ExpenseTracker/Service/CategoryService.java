@@ -3,9 +3,13 @@ package com.div.ExpenseTracker.Service;
 import com.div.ExpenseTracker.Dto.CategoryRequestDto;
 import com.div.ExpenseTracker.Dto.CategoryResponseDto;
 import com.div.ExpenseTracker.Entity.CategoryEntity;
+import com.div.ExpenseTracker.Entity.ProfileEntity;
 import com.div.ExpenseTracker.Repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,26 +21,43 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
     public CategoryResponseDto createCategory(CategoryRequestDto categoryRequestDto) {
-        CategoryEntity category = toEntity(categoryRequestDto);
+        ProfileEntity profile = currentProfile();
+        validateName(categoryRequestDto.getName());
+        if (categoryRepository.existsByProfileEntity_IdAndNameIgnoreCase(profile.getId(), categoryRequestDto.getName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You already have a category with this name");
+        }
+        CategoryEntity category = CategoryEntity.builder()
+                .name(categoryRequestDto.getName().trim())
+                .description(categoryRequestDto.getDescription())
+                .profileEntity(profile)
+                .build();
         categoryRepository.save(category);
         return toDto(category);
     }
 
     public List<CategoryResponseDto> getAllCategories() {
-        return categoryRepository.findAll()
+        Long profileId = currentProfile().getId();
+        return categoryRepository.findByProfileEntity_IdOrderByNameAsc(profileId)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
     public Optional<CategoryResponseDto> getCategoryById(Long id) {
-        return categoryRepository.findById(id).map(this::toDto);
+        Long profileId = currentProfile().getId();
+        return categoryRepository.findByIdAndProfileEntity_Id(id, profileId).map(this::toDto);
     }
 
     public Optional<CategoryResponseDto> updateCategory(Long id, CategoryRequestDto categoryRequestDto) {
-        return categoryRepository.findById(id).map(
+        ProfileEntity profile = currentProfile();
+        validateName(categoryRequestDto.getName());
+        return categoryRepository.findByIdAndProfileEntity_Id(id, profile.getId()).map(
                 category -> {
-                    category.setName(categoryRequestDto.getName());
+                    if (categoryRepository.existsByProfileEntity_IdAndNameIgnoreCaseAndIdNot(
+                            profile.getId(), categoryRequestDto.getName(), id)) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You already have a category with this name");
+                    }
+                    category.setName(categoryRequestDto.getName().trim());
                     category.setDescription(categoryRequestDto.getDescription());
                     categoryRepository.save(category);
                     return toDto(category);
@@ -45,18 +66,26 @@ public class CategoryService {
     }
 
     public boolean deleteCategory(Long id) {
-        if (!categoryRepository.existsById(id)) {
+        Long profileId = currentProfile().getId();
+        if (!categoryRepository.existsByIdAndProfileEntity_Id(id, profileId)) {
             return false;
         }
         categoryRepository.deleteById(id);
         return true;
     }
 
-    private CategoryEntity toEntity(CategoryRequestDto categoryRequestDto) {
-        return CategoryEntity.builder()
-                .name(categoryRequestDto.getName())
-                .description(categoryRequestDto.getDescription())
-                .build();
+    private void validateName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name is required");
+        }
+    }
+
+    private ProfileEntity currentProfile() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof ProfileEntity profile)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+        }
+        return profile;
     }
 
     private CategoryResponseDto toDto(CategoryEntity categoryEntity) {

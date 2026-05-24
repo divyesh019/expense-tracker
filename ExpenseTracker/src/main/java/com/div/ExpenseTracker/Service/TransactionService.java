@@ -99,13 +99,8 @@ public class TransactionService {
         if (categoryId == null) {
             return null;
         }
-        CategoryEntity category = categoryRepository.findById(categoryId)
+        return categoryRepository.findByIdAndProfileEntity_Id(categoryId, profile.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found"));
-        if (category.getProfileEntity() != null
-                && !category.getProfileEntity().getId().equals(profile.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category does not belong to current user");
-        }
-        return category;
     }
 
     private TransactionResponseDto toDto(TransactionEntity entity) {
